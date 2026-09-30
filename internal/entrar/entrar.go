@@ -1,8 +1,8 @@
 // Package entrar consigue una sesión del sitio: el sitio solo deja entrar con Google, y Google
-// solo en un navegador de verdad. Se abre un Chrome/Edge/Brave/Chromium con un perfil propio de
-// txt421 y el protocolo de depuración (DevTools) escuchando solo en 127.0.0.1; la persona entra
-// como siempre y, apenas el sitio pone la cookie de sesión, se lee y se cierra la ventana.
-// El perfil queda guardado, así la próxima vez Google ya recuerda la cuenta.
+// solo en un navegador de verdad y sin automatizar. Se usa un Chrome/Edge/Brave/Chromium con un
+// perfil propio de txt421: la persona entra ahí como siempre, cierra la ventana, y después se lee
+// la cookie de sesión abriendo ese perfil sin ventana (ver Entrar). El perfil queda guardado, así
+// la próxima vez Google ya recuerda la cuenta.
 package entrar
 
 import (
@@ -26,8 +26,6 @@ import (
 var (
 	// ErrSinNavegador: no hay un navegador compatible instalado.
 	ErrSinNavegador = errors.New("no encontré Chrome, Edge, Brave ni Chromium")
-	// ErrCerrado: se cerró la ventana antes de entrar.
-	ErrCerrado = errors.New("se cerró el navegador antes de entrar")
 )
 
 // Navegador encontrado.
@@ -112,54 +110,133 @@ type Resultado struct {
 	Navegador string
 }
 
-// Entrar abre el navegador en la página de Google del sitio y espera la sesión.
-// avisar recibe mensajes de estado para mostrar.
-func Entrar(ctx context.Context, base, perfil string, avisar func(string)) (*Resultado, error) {
+// ErrNoEntro: se cerró el navegador sin que el sitio haya dado una sesión.
+var ErrNoEntro = errors.New("no se entró: el navegador se cerró sin sesión del sitio")
+
+// ErrYaAbierto: ya había una ventana de txt421 abierta con ese perfil.
+var ErrYaAbierto = errors.New("ya hay una ventana de txt421 abierta: cerrala y probá de nuevo")
+
+// Entrar hace el login en tres pasos. Google no deja entrar en un navegador con el protocolo de
+// depuración abierto ("este navegador puede no ser seguro"), así que:
+//  1. se abre el perfil sin ventana (headless) con DevTools y se borra la sesión vieja del sitio;
+//  2. se abre el navegador normal, sin DevTools, en la página de Google del sitio, y se espera a
+//     que la persona lo cierre (o a que avise por listo);
+//  3. se vuelve a abrir el perfil sin ventana y se lee la cookie de sesión que dejó el sitio.
+//
+// avisar recibe el nombre del navegador cuando la ventana ya está abierta.
+func Entrar(ctx context.Context, base, perfil string, avisar func(string), listo <-chan struct{}) (*Resultado, error) {
 	nav, err := Buscar()
 	if err != nil {
 		return nil, err
 	}
-	host := hostDe(base)
 	perfil = perfilPara(nav, perfil)
 	if err := os.MkdirAll(perfil, 0o700); err != nil {
 		return nil, err
 	}
-	puerto := filepath.Join(perfil, "DevToolsActivePort")
-	os.Remove(puerto)
+	activos.Add(1)
+	defer activos.Done()
 
-	args := []string{
-		"--user-data-dir=" + perfil,
-		"--remote-debugging-port=0",
-		"--remote-allow-origins=http://127.0.0.1",
-		"--no-first-run",
-		"--no-default-browser-check",
-		"--disable-default-apps",
-		"--new-window",
-		"--window-size=520,720",
-		// Arranca en blanco: antes de ir a Google se borra la sesión vieja que pueda haber quedado
-		// en el perfil (si no, se la leería enseguida y ya no sirve).
-		"--app=about:blank",
+	// 1. Sin la sesión vieja (si quedó una, se la leería al final aunque ya no sirva).
+	if _, err := conDevTools(ctx, nav, perfil, func(c *cliente) (map[string]string, error) {
+		return nil, c.borrarSesion(ctx, base)
+	}); err != nil {
+		return nil, fmt.Errorf("no pude preparar %s: %w", nav.Nombre, err)
 	}
-	cmd := exec.Command(nav.Ruta, args...)
-	cmd.Stdout, cmd.Stderr = nil, nil
+
+	// 2. El navegador de verdad, sin nada raro: Google lo trata como a cualquiera.
+	cmd := exec.Command(nav.Ruta, append(banderas(perfil),
+		"--new-window",
+		"--window-size=560,760",
+		"--app="+base+"/auth/google",
+	)...)
 	prepararProceso(cmd)
 	if err := cmd.Start(); err != nil {
 		return nil, fmt.Errorf("no pude abrir %s: %w", nav.Nombre, err)
 	}
+	inicio := time.Now()
 	termino := make(chan struct{})
 	go func() { cmd.Wait(); close(termino) }()
-	activos.Add(1)
-	defer activos.Done()
+	avisar(nav.Nombre)
+	select {
+	case <-termino:
+		// Si terminó enseguida, le pasó la dirección a otro proceso con el mismo perfil.
+		if time.Since(inicio) < 3*time.Second {
+			return nil, ErrYaAbierto
+		}
+	case <-listo:
+		cerrarBien(cmd, termino)
+	case <-ctx.Done():
+		cerrarBien(cmd, termino)
+		return nil, ctx.Err()
+	}
+
+	// 3. Leer la sesión que dejó el sitio.
+	cookies, err := conDevTools(ctx, nav, perfil, func(c *cliente) (map[string]string, error) {
+		return c.cookiesDelSitio(ctx, hostDe(base))
+	})
+	if err != nil {
+		return nil, fmt.Errorf("no pude leer la sesión de %s: %w", nav.Nombre, err)
+	}
+	if cookies["sid"] == "" {
+		return nil, ErrNoEntro
+	}
+	return &Resultado{Cookies: cookies, Navegador: nav.Nombre}, nil
+}
+
+// banderas comunes a las dos formas de abrir el perfil. El almacén de claves tiene que ser el
+// mismo en las dos (las cookies se guardan cifradas con él): uno fijo, sin llavero del sistema.
+func banderas(perfil string) []string {
+	b := []string{
+		"--user-data-dir=" + perfil,
+		"--no-first-run",
+		"--no-default-browser-check",
+		"--disable-default-apps",
+	}
+	switch runtime.GOOS {
+	case "linux":
+		b = append(b, "--password-store=basic")
+	case "darwin":
+		b = append(b, "--use-mock-keychain")
+	}
+	return b
+}
+
+// cerrarBien le pide al navegador que se cierre (guardando las cookies) y, si no, lo mata.
+func cerrarBien(cmd *exec.Cmd, termino <-chan struct{}) {
+	pedirCierre(cmd)
+	select {
+	case <-termino:
+	case <-time.After(15 * time.Second):
+		cmd.Process.Kill()
+		<-termino
+	}
+}
+
+// conDevTools abre el perfil sin ventana, con DevTools solo en 127.0.0.1, corre f y lo cierra.
+func conDevTools(ctx context.Context, nav Navegador, perfil string, f func(*cliente) (map[string]string, error)) (map[string]string, error) {
+	puerto := filepath.Join(perfil, "DevToolsActivePort")
+	os.Remove(puerto)
+	cmd := exec.Command(nav.Ruta, append(banderas(perfil),
+		"--headless=new",
+		"--remote-debugging-port=0",
+		"--remote-allow-origins=http://127.0.0.1",
+		"about:blank",
+	)...)
+	prepararProceso(cmd)
+	if err := cmd.Start(); err != nil {
+		return nil, err
+	}
+	termino := make(chan struct{})
+	go func() { cmd.Wait(); close(termino) }()
 	defer func() {
 		select {
 		case <-termino:
-		case <-time.After(3 * time.Second):
+		case <-time.After(5 * time.Second):
 			cmd.Process.Kill()
+			<-termino
 		}
 	}()
-	avisar(nav.Nombre)
 
-	// El navegador escribe el puerto elegido en DevToolsActivePort ("puerto\n/devtools/browser/…").
 	var wsURL string
 	limite := time.Now().Add(30 * time.Second)
 	for wsURL == "" {
@@ -168,71 +245,37 @@ func Entrar(ctx context.Context, base, perfil string, avisar func(string)) (*Res
 			if len(lineas) >= 2 {
 				if p, err := strconv.Atoi(strings.TrimSpace(lineas[0])); err == nil && p > 0 {
 					wsURL = fmt.Sprintf("ws://127.0.0.1:%d%s", p, strings.TrimSpace(lineas[1]))
+					break
 				}
 			}
 		}
-		if wsURL != "" {
-			break
-		}
 		select {
 		case <-ctx.Done():
+			cmd.Process.Kill()
 			return nil, ctx.Err()
 		case <-termino:
-			return nil, fmt.Errorf("%s se cerró enseguida (¿ya había una ventana de txt421 abierta?)", nav.Nombre)
-		case <-time.After(200 * time.Millisecond):
+			return nil, ErrYaAbierto
+		case <-time.After(150 * time.Millisecond):
 		}
 		if time.Now().After(limite) {
-			return nil, fmt.Errorf("%s no respondió", nav.Nombre)
+			cmd.Process.Kill()
+			return nil, errors.New("no respondió")
 		}
 	}
-
 	conn, _, err := websocket.Dial(ctx, wsURL, nil)
 	if err != nil {
-		return nil, fmt.Errorf("no pude hablar con %s: %w", nav.Nombre, err)
+		cmd.Process.Kill()
+		return nil, err
 	}
 	conn.SetReadLimit(32 << 20)
 	defer conn.CloseNow()
-
-	cdp := &cliente{conn: conn}
-	defer func() {
-		// Pase lo que pase, la ventana (y su puerto de depuración) se cierra.
-		cctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-		defer cancel()
-		cdp.llamar(cctx, "Browser.close", nil)
-	}()
-	if err := cdp.prepararPagina(ctx, base); err != nil {
-		return nil, fmt.Errorf("no pude preparar %s: %w", nav.Nombre, err)
-	}
-	for {
-		cookies, err := cdp.cookies(ctx)
-		if err != nil {
-			select {
-			case <-termino:
-				return nil, ErrCerrado
-			default:
-			}
-			if ctx.Err() != nil {
-				return nil, ctx.Err()
-			}
-			return nil, ErrCerrado
-		}
-		encontradas := map[string]string{}
-		for _, c := range cookies {
-			if strings.TrimPrefix(c.Domain, ".") == host && (c.Name == "sid" || c.Name == "visita") {
-				encontradas[c.Name] = c.Value
-			}
-		}
-		if encontradas["sid"] != "" {
-			return &Resultado{Cookies: encontradas, Navegador: nav.Nombre}, nil
-		}
-		select {
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		case <-termino:
-			return nil, ErrCerrado
-		case <-time.After(time.Second):
-		}
-	}
+	c := &cliente{conn: conn}
+	res, err := f(c)
+	// Browser.close cierra ordenado: guarda en disco los cambios de cookies.
+	cctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	c.llamar(cctx, "Browser.close", nil)
+	return res, err
 }
 
 func hostDe(base string) string {
@@ -309,13 +352,13 @@ func (c *cliente) cookies(ctx context.Context) ([]cookieCDP, error) {
 	return r.Cookies, err
 }
 
-// prepararPagina borra la cookie de sesión del sitio y lleva la ventana a la página de Google.
-func (c *cliente) prepararPagina(ctx context.Context, base string) error {
+// sesionDePagina se engancha a la pestaña (hace falta para el dominio Network).
+func (c *cliente) sesionDePagina(ctx context.Context) (string, error) {
 	var pagina string
 	for i := 0; i < 50 && pagina == ""; i++ {
 		res, err := c.llamar(ctx, "Target.getTargets", nil)
 		if err != nil {
-			return err
+			return "", err
 		}
 		var r struct {
 			TargetInfos []struct {
@@ -335,21 +378,42 @@ func (c *cliente) prepararPagina(ctx context.Context, base string) error {
 		}
 	}
 	if pagina == "" {
-		return errors.New("no apareció la ventana")
+		return "", errors.New("no apareció la pestaña")
 	}
 	res, err := c.llamar(ctx, "Target.attachToTarget", map[string]any{"targetId": pagina, "flatten": true})
 	if err != nil {
-		return err
+		return "", err
 	}
 	var r struct {
 		SessionID string `json:"sessionId"`
 	}
 	json.Unmarshal(res, &r)
-	if _, err := c.llamarEn(ctx, r.SessionID, "Network.deleteCookies", map[string]any{"name": "sid", "url": base + "/"}); err != nil {
+	return r.SessionID, nil
+}
+
+// borrarSesion borra la cookie sid del sitio del perfil.
+func (c *cliente) borrarSesion(ctx context.Context, base string) error {
+	s, err := c.sesionDePagina(ctx)
+	if err != nil {
 		return err
 	}
-	_, err = c.llamarEn(ctx, r.SessionID, "Page.navigate", map[string]any{"url": base + "/auth/google"})
+	_, err = c.llamarEn(ctx, s, "Network.deleteCookies", map[string]any{"name": "sid", "url": base + "/"})
 	return err
+}
+
+// cookiesDelSitio devuelve sid y visita del sitio, si están.
+func (c *cliente) cookiesDelSitio(ctx context.Context, host string) (map[string]string, error) {
+	cookies, err := c.cookies(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := map[string]string{}
+	for _, ck := range cookies {
+		if strings.TrimPrefix(ck.Domain, ".") == host && (ck.Name == "sid" || ck.Name == "visita") {
+			out[ck.Name] = ck.Value
+		}
+	}
+	return out, nil
 }
 
 // activos: logins con un navegador abierto (para esperarlos al cerrar la app).

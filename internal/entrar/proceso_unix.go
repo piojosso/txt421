@@ -11,3 +11,8 @@ import (
 func prepararProceso(cmd *exec.Cmd) {
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 }
+
+// pedirCierre: SIGTERM hace que Chrome se cierre ordenado (guarda las cookies).
+func pedirCierre(cmd *exec.Cmd) {
+	cmd.Process.Signal(syscall.SIGTERM)
+}

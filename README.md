@@ -69,8 +69,10 @@ Las publicaciones abiertas se actualizan solas cada 20 segundos, como en la web.
 ## Entrar
 
 El sitio solo deja entrar con Google, y Google solo en un navegador de verdad. `txt421 entrar`
-abre una ventana de Chrome, Edge, Brave o Chromium con un perfil propio de txt421; entrás como
-siempre y la ventana se cierra sola. La sesión dura 30 días (lo que decide el sitio).
+abre una ventana de Chrome, Edge, Brave o Chromium con un perfil propio de txt421: entrás como
+siempre y, cuando ves el foro, cerrás esa ventana (o apretás Enter en txt421). Después txt421
+abre ese perfil sin ventana y lee la sesión que dejó el sitio. La sesión dura 30 días (lo que
+decide el sitio), y la próxima vez Google ya recuerda tu cuenta.
 
 Si no tenés ninguno de esos navegadores, o Google no deja entrar en esa ventana, está la opción
 de pegar a mano la cookie `sid` de un navegador donde ya entraste (herramientas de desarrollo →

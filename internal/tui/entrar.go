@@ -25,6 +25,7 @@ type pantEntrar struct {
 	err      string
 	ocupado  bool
 	cancelar context.CancelFunc
+	listoCh  chan struct{} // Enter: "ya entré", cierra el navegador
 	listo    bool
 }
 
@@ -69,6 +70,9 @@ func (p *pantEntrar) Recargar(a *App) tea.Cmd {
 
 func (p *pantEntrar) Teclas(a *App) []Atajo {
 	if p.ocupado {
+		if p.listoCh != nil {
+			return []Atajo{{"Enter", T("entrar_ya")}, {"Esc", T("cancelar")}}
+		}
 		return []Atajo{{"Esc", T("cancelar")}}
 	}
 	return []Atajo{{"↑↓", T("k_elegir")}, {"Enter", T("k_abrir")}, {"Esc", T("k_volver")}}
@@ -77,8 +81,13 @@ func (p *pantEntrar) Teclas(a *App) []Atajo {
 func (p *pantEntrar) Tecla(a *App, k tea.KeyPressMsg) (bool, tea.Cmd) {
 	s := k.String()
 	if p.ocupado {
-		if s == "esc" && p.cancelar != nil {
+		switch {
+		case s == "esc" && p.cancelar != nil:
 			p.cancelar()
+		case s == "enter" && p.listoCh != nil:
+			close(p.listoCh)
+			p.listoCh = nil
+			p.estado = T("entrar_leyendo")
 		}
 		return true, nil
 	}
@@ -128,12 +137,14 @@ func (p *pantEntrar) conGoogle(a *App) tea.Cmd {
 	}
 	p.err = ""
 	p.ocupado = true
-	p.estado = T("entrar_como", nav.Nombre) + " " + T("entrar_esperando")
-	ctx, cancel := context.WithTimeout(a.ctx, 10*time.Minute)
+	p.estado = T("entrar_como", nav.Nombre)
+	ctx, cancel := context.WithTimeout(a.ctx, 20*time.Minute)
 	p.cancelar = cancel
+	listo := make(chan struct{})
+	p.listoCh = listo
 	return func() tea.Msg {
 		defer cancel()
-		r, err := entrar.Entrar(ctx, site.BaseURL, config.DirPerfil(), func(string) {})
+		r, err := entrar.Entrar(ctx, site.BaseURL, config.DirPerfil(), func(string) {}, listo)
 		if err != nil {
 			return entrarMsg{p: p, err: err}
 		}
@@ -169,12 +180,15 @@ func (p *pantEntrar) Mensaje(a *App, msg tea.Msg) tea.Cmd {
 			return nil
 		}
 		p.cancelar = nil
+		p.listoCh = nil
 		if m.err != nil {
 			p.ocupado = false
 			p.estado = ""
 			switch {
-			case errors.Is(m.err, entrar.ErrCerrado):
+			case errors.Is(m.err, entrar.ErrNoEntro):
 				p.err = T("entrar_cerrado")
+			case errors.Is(m.err, entrar.ErrYaAbierto):
+				p.err = T("entrar_ya_abierto")
 			case errors.Is(m.err, context.Canceled):
 				p.err = ""
 			default:
@@ -247,7 +261,12 @@ func (p *pantEntrar) Dibujar(a *App, z *Zonas, w, alto int) []Linea {
 	ls = append(ls, nil)
 	if p.estado != "" && p.ocupado {
 		ls = append(ls, a.parrafo(p.estado, w, es.aviso)...)
-		ls = append(ls, a.parrafo(T("entrar_google_bloqueo"), w, es.tenue)...)
+		if p.listoCh != nil {
+			ls = append(ls, nil)
+			ls = append(ls, a.parrafo(T("entrar_cuando"), w, es.texto)...)
+			ls = append(ls, nil)
+			ls = append(ls, a.parrafo(T("entrar_google_bloqueo"), w, es.tenue)...)
+		}
 	}
 	if p.err != "" {
 		ls = append(ls, a.parrafo(T("error")+p.err, w, es.error.negrita())...)
