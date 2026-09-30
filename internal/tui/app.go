@@ -13,6 +13,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/piojosso/txt421/internal/config"
+	"github.com/piojosso/txt421/internal/entrar"
 	. "github.com/piojosso/txt421/internal/i18n"
 	"github.com/piojosso/txt421/internal/site"
 )
@@ -165,10 +166,29 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return a, nil
 	case versionMsg:
 		a.prefs.UltimoChequeo = time.Now()
-		config.GuardarPreferencias(a.prefs)
 		if m.version != "" && m.version != a.op.Version {
 			a.nueva = m.version
+			a.prefs.AvisoVersion = m.version
 			a.avisar(T("hay_version", m.version))
+		}
+		config.GuardarPreferencias(a.prefs)
+		return a, nil
+	case actualizadoMsg:
+		switch {
+		case m.err != nil:
+			a.fallar(m.err)
+		case m.version == a.op.Version:
+			a.avisar(T("al_dia", m.version))
+		default:
+			a.nueva = ""
+			a.prefs.AvisoVersion = ""
+			config.GuardarPreferencias(a.prefs)
+			a.avisar(T("actualizado", m.version))
+		}
+		for _, p := range a.pila {
+			if pr, ok := p.(*pantPreferencias); ok {
+				pr.actualizando = false
+			}
 		}
 		return a, nil
 	case salidoMsg:
@@ -259,6 +279,7 @@ func (a *App) abrirSeccion(slug string) tea.Cmd {
 // Salir de la app.
 func (a *App) Salir() tea.Cmd {
 	a.cancel()
+	entrar.Esperar(4 * time.Second)
 	a.guardarBorradores()
 	return tea.Quit
 }
@@ -384,8 +405,14 @@ func (a *App) siguienteTema() {
 	a.avisar(T("tema") + ": " + a.tema.Nombre)
 }
 
+// Ocupada: una pantalla que está mandando algo (no se la puede dejar a medias con el mouse).
+type Ocupada interface{ Ocupada() bool }
+
 func (a *App) click(m tea.Mouse) tea.Cmd {
 	if m.Button != tea.MouseLeft {
+		return nil
+	}
+	if o, ok := a.actual().(Ocupada); ok && o.Ocupada() && a.capa == nil {
 		return nil
 	}
 	if z := a.zonas.en(m.X, m.Y); z != nil && z.accion != nil {
@@ -750,7 +777,10 @@ func (a *App) chequearVersion() tea.Cmd {
 	if a.op.UltimaVersion == nil || a.op.Version == "dev" {
 		return nil
 	}
-	if time.Since(a.prefs.UltimoChequeo) < 20*time.Hour && a.prefs.AvisoVersion == "" {
+	if v := a.prefs.AvisoVersion; v != "" && v != a.op.Version {
+		a.nueva = v
+	}
+	if time.Since(a.prefs.UltimoChequeo) < 20*time.Hour {
 		return nil
 	}
 	return func() tea.Msg {

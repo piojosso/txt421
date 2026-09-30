@@ -115,7 +115,12 @@ func (p *pantEntrar) Tecla(a *App, k tea.KeyPressMsg) (bool, tea.Cmd) {
 	return true, nil
 }
 
+func (p *pantEntrar) Ocupada() bool { return p.ocupado }
+
 func (p *pantEntrar) conGoogle(a *App) tea.Cmd {
+	if p.ocupado {
+		return nil
+	}
 	nav, err := entrar.Buscar()
 	if err != nil {
 		p.err = T("entrar_sin_nav")
@@ -195,6 +200,9 @@ func (p *pantEntrar) Mensaje(a *App, msg tea.Msg) tea.Cmd {
 		a.actualizarCabecera(m.cab)
 		a.avisar(T("entrar_ok"))
 		p.listo = true
+		if a.actual() != p {
+			return nil // ya se fue a otra pantalla
+		}
 		// Volver a donde estaba, recargado (ahora con la sesión).
 		if len(a.pila) > 1 {
 			a.Volver()
@@ -352,21 +360,7 @@ func (p *pantPreferencias) actualizar(a *App) tea.Cmd {
 	}
 }
 
-func (p *pantPreferencias) Mensaje(a *App, msg tea.Msg) tea.Cmd {
-	if m, ok := msg.(actualizadoMsg); ok {
-		p.actualizando = false
-		switch {
-		case m.err != nil:
-			a.fallar(m.err)
-		case m.version == a.op.Version:
-			a.avisar(T("al_dia", m.version))
-		default:
-			a.nueva = ""
-			a.avisar(T("actualizado", m.version))
-		}
-	}
-	return nil
-}
+func (p *pantPreferencias) Mensaje(a *App, msg tea.Msg) tea.Cmd { return nil }
 
 // salirDeCuenta cierra la sesión en el sitio y la olvida.
 func (a *App) salirDeCuenta() tea.Cmd {

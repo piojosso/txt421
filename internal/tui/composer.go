@@ -160,6 +160,8 @@ func nuevaComposerHilo(a *App, seccion string) *pantComposer {
 	return c
 }
 
+func (c *pantComposer) Ocupada() bool { return c.enviando }
+
 func (c *pantComposer) Titulo() string {
 	if c.respuesta {
 		return T("responder")
@@ -250,7 +252,7 @@ func (c *pantComposer) Tecla(a *App, k tea.KeyPressMsg) (bool, tea.Cmd) {
 	}
 	s := k.String()
 	switch s {
-	case "ctrl+enter", "ctrl+s", "alt+enter", "ctrl+j", "f2":
+	case "ctrl+enter", "ctrl+s", "alt+enter", "f2":
 		return true, c.publicar(a)
 	case "ctrl+p", "f3":
 		c.alternarPrevia()
@@ -387,6 +389,9 @@ func (c *pantComposer) Mensaje(a *App, msg tea.Msg) tea.Cmd {
 			a.avisar(T("en_cola"))
 		} else {
 			a.avisar(T("publicado"))
+		}
+		if a.actual() != c {
+			return nil // no debería pasar: mientras manda, no se puede salir
 		}
 		if c.respuesta && c.hilo != nil && a.estaEnPila(c.hilo) {
 			a.Volver()

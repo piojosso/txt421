@@ -680,6 +680,9 @@ func ParseError(doc string) string {
 func ParseDocumento(doc string) *Documento {
 	main := uno(parsear(doc), tag("main"))
 	d := &Documento{}
+	if main == nil {
+		return d
+	}
 	var rec func(*html.Node)
 	rec = func(n *html.Node) {
 		for c := n.FirstChild; c != nil; c = c.NextSibling {

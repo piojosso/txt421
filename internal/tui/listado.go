@@ -110,9 +110,19 @@ func (p *pantListado) Mensaje(a *App, msg tea.Msg) tea.Cmd {
 	}
 	a.actualizarCabecera(m.l.Cabecera)
 	if m.pagina == 1 {
-		p.fichas = nil
+		p.fichas = []site.Ficha{} // vacío, no nil: nil es "todavía cargando"
 	}
-	p.fichas = append(p.fichas, m.l.Fichas...)
+	// Entre página y página del sitio pueden subir publicaciones: sin repetir.
+	vistas := map[int]bool{}
+	for _, f := range p.fichas {
+		vistas[f.Hilo] = true
+	}
+	for _, f := range m.l.Fichas {
+		if !vistas[f.Hilo] {
+			p.fichas = append(p.fichas, f)
+			vistas[f.Hilo] = true
+		}
+	}
 	p.sitioPag = m.l.Pagina
 	p.sitioTotal = m.l.Paginas
 	p.titulo = m.l.Titulo
@@ -469,10 +479,10 @@ func (p *pantListado) Tecla(a *App, k tea.KeyPressMsg) (bool, tea.Cmd) {
 		return true, p.cambiarPagina(a, 1)
 	case "pgup", "[":
 		return true, p.cambiarPagina(a, -1)
-	case "home", "g":
+	case "home":
 		p.sel = 0
 		return true, nil
-	case "end", "G":
+	case "end":
 		return true, p.mover(a, len(p.fichas))
 	case "enter":
 		return true, p.abrir(a)

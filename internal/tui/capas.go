@@ -314,7 +314,12 @@ func (d *dialogoReportar) Tecla(a *App, k tea.KeyPressMsg) tea.Cmd {
 		if d.foco == 0 && d.sel < len(d.motivos)-1 {
 			d.sel++
 		}
-	case "enter", "space":
+	case "space":
+		if d.foco == 0 {
+			return nil // en la lista, espacio elige (ya está elegido el que tiene el foco)
+		}
+		fallthrough
+	case "enter":
 		if d.foco == 2 {
 			a.capa = nil
 			return nil
@@ -324,7 +329,8 @@ func (d *dialogoReportar) Tecla(a *App, k tea.KeyPressMsg) tea.Cmd {
 	return nil
 }
 
-func (d *dialogoReportar) Dibujar(a *App, z *Zonas, W, H int) ([]Linea, int, int) {
+func (d *dialogoReportar) Dibujar(a *App, zFinal *Zonas, W, H int) ([]Linea, int, int) {
+	z := &Zonas{}
 	t := a.tema
 	w := min(W-4, 72)
 	iw := w - 4
@@ -366,9 +372,13 @@ func (d *dialogoReportar) Dibujar(a *App, z *Zonas, W, H int) ([]Linea, int, int
 	z.agregar(2, yb, 2+b1.Ancho(), yb+1, func() tea.Cmd { d.foco = 1; return d.enviar(a) })
 	z.agregar(3+b1.Ancho(), yb, 3+b1.Ancho()+b2.Ancho(), yb+1, func() tea.Cmd { a.capa = nil; return nil })
 	in = append(in, mas(b1, Linea{{base, " "}}, b2))
+	corte := 0
 	if len(in) > H-2 {
-		in = in[len(in)-(H-2):]
+		// No entra: se corta de arriba (el mensaje), y las zonas suben lo mismo.
+		corte = len(in) - (H - 2)
+		in = in[corte:]
 	}
+	zFinal.sumar(z, 0, -corte)
 	ls := a.ventana(in, w)
 	return ls, (W - w) / 2, max(0, (H-len(ls))/2)
 }

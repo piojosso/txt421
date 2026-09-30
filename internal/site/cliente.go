@@ -165,8 +165,12 @@ func (c *Cliente) hacer(ctx context.Context, metodo, ruta string, form url.Value
 	if form != nil {
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	}
-	if ck := c.cabeceraCookies(); ck != "" {
-		req.Header.Set("Cookie", ck)
+	// La sesión va solo al sitio (y no por http si el sitio es https), aunque una redirección
+	// lleve a otro lado.
+	if base, err := url.Parse(c.Base); err == nil && req.URL.Host == base.Host && req.URL.Scheme == base.Scheme {
+		if ck := c.cabeceraCookies(); ck != "" {
+			req.Header.Set("Cookie", ck)
+		}
 	}
 	r, err := c.http.Do(req)
 	if err != nil {
@@ -475,8 +479,16 @@ func (c *Cliente) Motivos(ctx context.Context, post int) ([]Motivo, error) {
 
 // Reportar un mensaje.
 func (c *Cliente) Reportar(ctx context.Context, post int, motivo string) error {
-	_, err := c.enviar(ctx, fmt.Sprintf("/p/%d/reportar", post), url.Values{"motivo": {motivo}})
-	return err
+	r, err := c.enviar(ctx, fmt.Sprintf("/p/%d/reportar", post), url.Values{"motivo": {motivo}})
+	if err != nil {
+		return err
+	}
+	// El sitio vuelve a la publicación con ?aviso=reportado; sin eso, no se guardó (mensaje
+	// propio o cuenta suspendida).
+	if !strings.Contains(r.destino, "aviso=reportado") {
+		return &ErrSitio{Mensaje: "No se pudo reportar este mensaje."}
+	}
+	return nil
 }
 
 // PuedeBorrar dice si un mensaje propio se puede borrar ya, o por qué no.

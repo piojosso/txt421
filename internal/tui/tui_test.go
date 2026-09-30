@@ -351,3 +351,18 @@ func TestEnvolver(t *testing.T) {
 		}
 	}
 }
+
+func TestSeccionVacia(t *testing.T) {
+	t.Setenv("TXT421_CONFIG", t.TempDir())
+	t.Setenv("TXT421_LANG", "es")
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`<html><body><main><header class="tablon-cabecera"><h1>Juegos · archivo</h1><p>x</p></header><div class="catalogo"></div></main></body></html>`))
+	}))
+	defer srv.Close()
+	a := Nueva(Opciones{Version: "dev", UserAgent: "prueba", Abrir: "b/juegos"})
+	a.cliente.Base = srv.URL
+	a.Update(tea.WindowSizeMsg{Width: 90, Height: 30})
+	correr(a, a.Init())
+	p := &prueba{t, a, 90, 30}
+	contiene(t, p.pantalla("vacia"), "No hay publicaciones todavía.")
+}

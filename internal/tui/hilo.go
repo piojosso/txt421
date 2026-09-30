@@ -31,6 +31,7 @@ type pantHilo struct {
 	citaIdx   int // para recorrer las citas del elegido con i
 	avisoVivo string
 	vivo      bool // hay un tick andando
+	guardando bool
 
 	// Del último dibujo.
 	paginas [][]segmento
@@ -212,6 +213,7 @@ func (p *pantHilo) Mensaje(a *App, msg tea.Msg) tea.Cmd {
 		if m.p != p {
 			return nil
 		}
+		p.guardando = false
 		if m.err != nil {
 			a.fallar(m.err)
 			return nil
@@ -491,7 +493,7 @@ func (p *pantHilo) Tecla(a *App, k tea.KeyPressMsg) (bool, tea.Cmd) {
 			return false, nil
 		}
 		return true, p.guardar(a)
-	case "end", "G":
+	case "end":
 		p.mover(len(p.hilo.Posts))
 	case "enter":
 		return true, p.responder(a, true)
@@ -570,9 +572,10 @@ func (p *pantHilo) responder(a *App, citar bool) tea.Cmd {
 }
 
 func (p *pantHilo) guardar(a *App) tea.Cmd {
-	if !p.hilo.PuedeGuardar {
+	if !p.hilo.PuedeGuardar || p.guardando {
 		return nil
 	}
+	p.guardando = true
 	no, quitar := p.hilo.No, p.hilo.Guardado
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(a.ctx, 20*time.Second)

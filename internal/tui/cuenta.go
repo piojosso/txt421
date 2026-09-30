@@ -54,6 +54,7 @@ func (p *pantLista) Recargar(a *App) tea.Cmd {
 	p.err = nil
 	p.pedido++
 	pedido, tipo := p.pedido, p.tipo
+	titulo := T("donde_participaste")
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(a.ctx, 30*time.Second)
 		defer cancel()
@@ -70,7 +71,7 @@ func (p *pantLista) Recargar(a *App) tea.Cmd {
 			for i, e := range b.Mias {
 				it := itemLista{hilo: e.Hilo, asunto: e.Asunto, info: e.Info}
 				if i == 0 {
-					it.seccion = T("donde_participaste")
+					it.seccion = titulo
 				}
 				items = append(items, it)
 			}
@@ -97,7 +98,10 @@ func (p *pantLista) Mensaje(a *App, msg tea.Msg) tea.Cmd {
 	if m.err != nil {
 		if errors.Is(m.err, site.ErrSesion) {
 			a.cab.Conectado = false
-			return a.Reemplazar(nuevaEntrar())
+			if a.actual() == p {
+				return a.Reemplazar(nuevaEntrar())
+			}
+			return nil
 		}
 		p.err = m.err
 		return nil

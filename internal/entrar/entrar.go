@@ -17,6 +17,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/coder/websocket"
@@ -85,7 +86,7 @@ func candidatos() []Navegador {
 				out = append(out, Navegador{c.nombre, p})
 			}
 		}
-		for _, p := range []string{"/usr/bin/chromium", "/snap/bin/chromium", "/var/lib/flatpak/exports/bin/com.google.Chrome"} {
+		for _, p := range []string{"/usr/bin/chromium", "/snap/bin/chromium"} {
 			out = append(out, Navegador{"Chromium", p})
 		}
 		return out
@@ -119,6 +120,7 @@ func Entrar(ctx context.Context, base, perfil string, avisar func(string)) (*Res
 		return nil, err
 	}
 	host := hostDe(base)
+	perfil = perfilPara(nav, perfil)
 	if err := os.MkdirAll(perfil, 0o700); err != nil {
 		return nil, err
 	}
@@ -134,7 +136,9 @@ func Entrar(ctx context.Context, base, perfil string, avisar func(string)) (*Res
 		"--disable-default-apps",
 		"--new-window",
 		"--window-size=520,720",
-		"--app=" + base + "/auth/google",
+		// Arranca en blanco: antes de ir a Google se borra la sesión vieja que pueda haber quedado
+		// en el perfil (si no, se la leería enseguida y ya no sirve).
+		"--app=about:blank",
 	}
 	cmd := exec.Command(nav.Ruta, args...)
 	cmd.Stdout, cmd.Stderr = nil, nil
@@ -144,6 +148,8 @@ func Entrar(ctx context.Context, base, perfil string, avisar func(string)) (*Res
 	}
 	termino := make(chan struct{})
 	go func() { cmd.Wait(); close(termino) }()
+	activos.Add(1)
+	defer activos.Done()
 	defer func() {
 		select {
 		case <-termino:
@@ -188,6 +194,15 @@ func Entrar(ctx context.Context, base, perfil string, avisar func(string)) (*Res
 	defer conn.CloseNow()
 
 	cdp := &cliente{conn: conn}
+	defer func() {
+		// Pase lo que pase, la ventana (y su puerto de depuración) se cierra.
+		cctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+		cdp.llamar(cctx, "Browser.close", nil)
+	}()
+	if err := cdp.prepararPagina(ctx, base); err != nil {
+		return nil, fmt.Errorf("no pude preparar %s: %w", nav.Nombre, err)
+	}
 	for {
 		cookies, err := cdp.cookies(ctx)
 		if err != nil {
@@ -208,12 +223,10 @@ func Entrar(ctx context.Context, base, perfil string, avisar func(string)) (*Res
 			}
 		}
 		if encontradas["sid"] != "" {
-			cdp.llamar(ctx, "Browser.close", nil)
 			return &Resultado{Cookies: encontradas, Navegador: nav.Nombre}, nil
 		}
 		select {
 		case <-ctx.Done():
-			cdp.llamar(context.Background(), "Browser.close", nil)
 			return nil, ctx.Err()
 		case <-termino:
 			return nil, ErrCerrado
@@ -243,8 +256,16 @@ type cookieCDP struct {
 }
 
 func (c *cliente) llamar(ctx context.Context, metodo string, params any) (json.RawMessage, error) {
+	return c.llamarEn(ctx, "", metodo, params)
+}
+
+// llamarEn manda un comando a una sesión de una página (Target.attachToTarget con flatten).
+func (c *cliente) llamarEn(ctx context.Context, sesion, metodo string, params any) (json.RawMessage, error) {
 	c.id++
 	pedido := map[string]any{"id": c.id, "method": metodo}
+	if sesion != "" {
+		pedido["sessionId"] = sesion
+	}
 	if params != nil {
 		pedido["params"] = params
 	}
@@ -286,4 +307,85 @@ func (c *cliente) cookies(ctx context.Context) ([]cookieCDP, error) {
 	}
 	err = json.Unmarshal(res, &r)
 	return r.Cookies, err
+}
+
+// prepararPagina borra la cookie de sesión del sitio y lleva la ventana a la página de Google.
+func (c *cliente) prepararPagina(ctx context.Context, base string) error {
+	var pagina string
+	for i := 0; i < 50 && pagina == ""; i++ {
+		res, err := c.llamar(ctx, "Target.getTargets", nil)
+		if err != nil {
+			return err
+		}
+		var r struct {
+			TargetInfos []struct {
+				TargetID string `json:"targetId"`
+				Type     string `json:"type"`
+			} `json:"targetInfos"`
+		}
+		json.Unmarshal(res, &r)
+		for _, t := range r.TargetInfos {
+			if t.Type == "page" {
+				pagina = t.TargetID
+				break
+			}
+		}
+		if pagina == "" {
+			time.Sleep(100 * time.Millisecond)
+		}
+	}
+	if pagina == "" {
+		return errors.New("no apareció la ventana")
+	}
+	res, err := c.llamar(ctx, "Target.attachToTarget", map[string]any{"targetId": pagina, "flatten": true})
+	if err != nil {
+		return err
+	}
+	var r struct {
+		SessionID string `json:"sessionId"`
+	}
+	json.Unmarshal(res, &r)
+	if _, err := c.llamarEn(ctx, r.SessionID, "Network.deleteCookies", map[string]any{"name": "sid", "url": base + "/"}); err != nil {
+		return err
+	}
+	_, err = c.llamarEn(ctx, r.SessionID, "Page.navigate", map[string]any{"url": base + "/auth/google"})
+	return err
+}
+
+// activos: logins con un navegador abierto (para esperarlos al cerrar la app).
+var activos sync.WaitGroup
+
+// Esperar da tiempo a que los logins en curso cierren su navegador (llamar después de cancelar
+// su contexto, antes de terminar el programa).
+func Esperar(max time.Duration) {
+	listo := make(chan struct{})
+	go func() { activos.Wait(); close(listo) }()
+	select {
+	case <-listo:
+	case <-time.After(max):
+	}
+}
+
+// perfilPara: el Chromium de Snap no puede escribir en carpetas ocultas del home (~/.cache);
+// para ese se usa la carpeta que Snap le da (~/snap/chromium/common).
+func perfilPara(nav Navegador, perfil string) string {
+	real, err := filepath.EvalSymlinks(nav.Ruta)
+	if err != nil {
+		real = nav.Ruta
+	}
+	esSnap := strings.HasPrefix(real, "/snap/") || strings.Contains(real, "/snap/bin/")
+	if !esSnap && runtime.GOOS == "linux" {
+		// /usr/bin/chromium-browser de Ubuntu es un script que llama al snap.
+		if b, err := os.ReadFile(real); err == nil && len(b) < 4096 && strings.Contains(string(b), "/snap/bin/") {
+			esSnap = true
+		}
+	}
+	if !esSnap {
+		return perfil
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return perfil
+	}
+	return filepath.Join(home, "snap", "chromium", "common", "txt421-navegador")
 }
