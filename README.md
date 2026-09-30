@@ -1,115 +1,112 @@
 # txt421
 
-Cliente de terminal para [txt.421.news](https://txt.421.news), el foro de texto de [421](https://www.421.news).
-Se ve como el sitio (los mismos colores, fichas, mensajes y temas), se maneja con las flechas y
-no tiene scroll: todo va en páginas del tamaño de la ventana. Se puede leer, publicar, responder,
-guardar, reportar y borrar lo propio, igual que en la web.
+Un cliente de [txt.421.news](https://txt.421.news) que corre en la terminal.
 
-![Una publicación en txt421, tema oscuro](docs/publicacion-oscuro.png)
+Si no lo conocés: txt es el foro de texto de [421](https://www.421.news). Solo texto, pseudoanónimo, sin likes, sin algoritmo. O sea, básicamente un foro que ya se veía como una terminal. Faltaba que corra en una, así que hice eso.
 
-## Instalar
+Se ve igual que el sitio (los mismos colores, las mismas fichas, los mismos temas), se maneja con las flechitas y NO tiene scroll: todo va en páginas del tamaño de la ventana. Podés leer, publicar, responder, guardar, reportar y borrar lo tuyo. Todo lo que hacés en la web, pero con más cara de hacker.
 
-Un solo comando, sin instalar nada más:
+![Una publicación en txt421](docs/publicacion-oscuro.png)
 
-**macOS y Linux**
+## Instalarlo
+
+Un solo comando. No hace falta instalar nada antes (ni Python, ni Node, ni nada).
+
+**Mac o Linux**
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/piojosso/txt421/main/install.sh | sh
 ```
 
-**Windows** (PowerShell)
+**Windows** (en PowerShell)
 
 ```powershell
 irm https://raw.githubusercontent.com/piojosso/txt421/main/install.ps1 | iex
 ```
 
-Después, en una terminal nueva: `txt421`. Para actualizar: `txt421 actualizar` (o Menú →
-Actualizar, que aparece cuando hay una versión nueva).
+Después abrís una terminal nueva y escribís `txt421`. Listo, eso es todo.
 
-El instalador baja el ejecutable de la última versión de
-[Releases](https://github.com/piojosso/txt421/releases), verifica su checksum y lo deja en
-`~/.local/bin` (macOS/Linux) o en `%LOCALAPPDATA%\Programs\txt421` (Windows), agregando esa
-carpeta al PATH si hace falta. También se pueden bajar los archivos a mano desde Releases.
+Para actualizar: `txt421 actualizar`. Igual cuando hay una versión nueva te avisa solo, y la podés instalar desde el menú.
 
-## Usar
+<details>
+<summary>¿Qué hace exactamente el instalador?</summary>
+
+Baja el ejecutable de la última versión desde [Releases](https://github.com/piojosso/txt421/releases), chequea que el checksum coincida y lo deja en `~/.local/bin` (Mac y Linux) o en `%LOCALAPPDATA%\Programs\txt421` (Windows). Si esa carpeta no está en tu PATH, la agrega. Nada más. Si preferís, podés bajar los archivos a mano desde Releases.
+</details>
+
+## Usarlo
 
 ```
 txt421                 la portada
-txt421 1542            la publicación 1542 (vale pegar el link)
+txt421 1542            abre la publicación 1542 (también podés pegar el link)
 txt421 b juegos        una sección
-txt421 buscar texto    buscar
+txt421 buscar algo     busca en todo el foro
 txt421 respuestas      tus respuestas
-txt421 entrar          entrar con Google
+txt421 entrar          entrar con tu cuenta
 ```
+
+Adentro:
 
 | Tecla | Qué hace |
 |---|---|
-| Flechas | moverse entre fichas y mensajes |
-| Enter | abrir; en un mensaje, responderle (agrega `>>N`) |
-| ← → · PgUp PgDn | páginas |
-| Tab · 0–5 | secciones (0 = portada) |
+| Flechas | moverte entre las fichas y los mensajes |
+| Enter | abrir. En un mensaje, responderle (te escribe el `>>N`) |
+| ← → · PgUp PgDn | cambiar de página |
+| Tab · 0–5 | cambiar de sección (0 es la portada) |
 | Esc | volver |
 | `n` | publicar |
 | `r` | responder |
-| `i` | ir al mensaje citado (`>>N`); Esc vuelve |
+| `i` | ir al mensaje citado (el `>>N`). Esc te trae de vuelta |
 | `g` | guardar la publicación |
 | `x` | reportar (o borrar, si es tuyo) |
 | `s` | destapar el spoiler |
-| `v` | vista catálogo / lista |
+| `v` | vista catálogo o lista |
 | `/` | buscar |
-| `m` | menú (Respuestas, Guardados, Preferencias, Normas…) |
-| `t` | tema (oscuro, claro, descanso, monocromo) |
-| `?` | todas las teclas |
+| `m` | el menú (Respuestas, Guardados, Preferencias, Normas…) |
+| `t` | cambiar el tema (oscuro, claro, descanso, monocromo) |
+| `?` | todas las teclas, por si te olvidás |
 
-Al escribir: Tab pasa de campo, **Ctrl+Enter** o **Ctrl+S** publica, Ctrl+P muestra la vista
-previa, Esc vuelve y guarda el borrador. El mouse también funciona.
+Cuando estás escribiendo: Tab pasa de un campo a otro, **Ctrl+Enter** (o **Ctrl+S**) publica, Ctrl+P te muestra la vista previa y Esc vuelve (y te guarda el borrador, tranqui). El mouse también funciona, para los que no se bancan vivir sin mouse.
 
-Las publicaciones abiertas se actualizan solas cada 20 segundos, como en la web.
+Las publicaciones que tenés abiertas se actualizan solas cada 20 segundos, igual que en la web.
 
 ## Entrar
 
-El sitio solo deja entrar con Google, y Google solo en un navegador de verdad. `txt421 entrar`
-abre una ventana de Chrome, Edge, Brave o Chromium con un perfil propio de txt421: entrás como
-siempre y, cuando ves el foro, cerrás esa ventana (o apretás Enter en txt421). Después txt421
-abre ese perfil sin ventana y lee la sesión que dejó el sitio. La sesión dura 30 días (lo que
-decide el sitio), y la próxima vez Google ya recuerda tu cuenta.
+Acá hay una vuelta. El sitio solo te deja entrar con Google, y Google solo te deja entrar desde un navegador de verdad. Una terminal no es un navegador de verdad (todavía).
 
-Si no tenés ninguno de esos navegadores, o Google no deja entrar en esa ventana, está la opción
-de pegar a mano la cookie `sid` de un navegador donde ya entraste (herramientas de desarrollo →
-Almacenamiento → Cookies → txt.421.news).
+Entonces `txt421 entrar` te abre una ventana de Chrome, Edge, Brave o Chromium, con un perfil aparte que es solo de txt421. Entrás como siempre, y cuando ya ves el foro cerrás esa ventana (o volvés a la terminal y apretás Enter). Ahí txt421 abre ese mismo perfil sin ventana y agarra la sesión que dejó el sitio. La sesión dura 30 días, y la próxima vez Google ya se acuerda de tu cuenta, así que es más rápido.
 
-La sesión se guarda solo en tu computadora, en la carpeta de configuración (`~/.config/txt421`,
-`~/Library/Application Support/txt421` o `%AppData%\txt421`), con permisos solo para tu usuario.
-txt421 habla únicamente con txt.421.news y, para buscar actualizaciones, con github.com.
+¿Por qué no lee la sesión directo con la ventana abierta? Porque lo intenté, y Google se dio cuenta y me dijo que mi navegador "puede no ser seguro". Muy amable Google.
+
+Si no tenés ninguno de esos navegadores, o si Google igual se pone densa, está la opción de pegar la cookie a mano: en un navegador donde ya entraste a txt.421.news abrís las herramientas de desarrollo (F12) → Almacenamiento → Cookies → txt.421.news, y copiás el valor de `sid`.
+
+La sesión se guarda solamente en tu compu (en `~/.config/txt421`, `~/Library/Application Support/txt421` o `%AppData%\txt421`, según tu sistema) y solo tu usuario la puede leer. txt421 habla con txt.421.news y con github.com para ver si hay actualizaciones. Con nadie más.
 
 ## Cómo funciona
 
-No hay API: txt421 lee el mismo HTML que ve el navegador y publica con los mismos formularios,
-así que todo pasa por las mismas normas, el mismo filtro y los mismos límites que la web
-(30 segundos entre mensajes, 10 minutos entre publicaciones). El código del sitio es abierto:
-[github.com/421news/txt](https://github.com/421news/txt).
+No hay API (todavía, o nunca, no sé). txt421 lee el mismo HTML que ve tu navegador y publica usando los mismos formularios que la web. Eso significa que todo pasa por las mismas normas, el mismo filtro de moderación y los mismos límites: 30 segundos entre mensajes y 10 minutos entre publicaciones. No hay trampa acá, perdón.
 
-Hecho en Go con [Bubble Tea](https://github.com/charmbracelet/bubbletea). Para compilarlo:
+El código del sitio es abierto, y la verdad que eso ayudó muchísimo: [github.com/421news/txt](https://github.com/421news/txt).
+
+Está hecho en Go con [Bubble Tea](https://github.com/charmbracelet/bubbletea). Si lo querés compilar vos:
 
 ```sh
 go build ./cmd/txt421
 go test ./...
 ```
 
-`TXT421_BASE` apunta a otro servidor (por ejemplo, uno local del código del sitio) y
-`TXT421_LANG=en` pone la interfaz en inglés.
+`TXT421_BASE` lo apunta a otro servidor (por ejemplo, el sitio corriendo en tu compu) y `TXT421_LANG=en` pone la interfaz en inglés.
 
 ---
 
 ## English
 
-txt421 is a terminal client for [txt.421.news](https://txt.421.news), 421's text-only forum. It
-looks like the website, is driven with the arrow keys, and pages instead of scrolling. You can
-read, post, reply, save, report and delete your own messages. Install with the commands above;
-the interface follows your system language (Spanish or English), switchable in Preferences.
-Press `?` inside the app for every key.
+made a client for [txt.421.news](https://txt.421.news) that runs in the terminal. it looks like the site, you move around with the arrow keys, and there's no scrolling, everything goes in pages. you can read, post, reply, save, report and delete your own stuff.
+
+installs on windows, mac or linux with a single command (the ones above). the interface follows your system language (spanish or english) and you can change it in Preferences. press `?` inside for all the keys.
 
 ![Replying](docs/responder.png)
 
-Licencia / License: [MIT](LICENSE). txt421 no es un producto oficial de 421. / Not an official
-421 product.
+---
+
+Licencia MIT. txt421 no es un producto oficial de 421, lo hice yo porque quería leer el foro desde la terminal. / MIT license. not an official 421 thing.
