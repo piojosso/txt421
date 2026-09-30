@@ -2,13 +2,13 @@
 
 Un cliente de [txt.421.news](https://txt.421.news) que corre en la terminal.
 
-Si no lo conocés: txt es el foro de texto de [421](https://www.421.news). Solo texto, pseudoanónimo, sin likes, sin algoritmo. O sea, básicamente un foro que ya se veía como una terminal. Faltaba que corra en una, así que hice eso.
+txt es el foro de texto de [421](https://www.421.news). Solo texto, pseudoanónimo, sin likes, sin algoritmo. O sea, básicamente un foro que ya se veía como una terminal. Faltaba que ande en CLI, así que hice eso.
 
-Se ve igual que el sitio (los mismos colores, las mismas fichas, los mismos temas), se maneja con las flechitas y NO tiene scroll: todo va en páginas del tamaño de la ventana. Podés leer, publicar, responder, guardar, reportar y borrar lo tuyo. Todo lo que hacés en la web, pero con más cara de hacker.
+Se ve igual que el sitio (los mismos colores, las mismas fichas, los mismos temas), se maneja con las flechitas y NO tiene scroll: todo va en páginas del tamaño de la ventana. Podés leer, publicar, responder, guardar, reportar y borrar lo tuyo. Todo lo que ya hacés en la web, pero con más cara de hacker.
 
 ![Una publicación en txt421](docs/publicacion-oscuro.png)
 
-## Instalarlo
+## Instalación
 
 Un solo comando. No hace falta instalar nada antes (ni Python, ni Node, ni nada).
 
@@ -34,10 +34,10 @@ Para actualizar: `txt421 actualizar`. Igual cuando hay una versión nueva te avi
 Baja el ejecutable de la última versión desde [Releases](https://github.com/piojosso/txt421/releases), chequea que el checksum coincida y lo deja en `~/.local/bin` (Mac y Linux) o en `%LOCALAPPDATA%\Programs\txt421` (Windows). Si esa carpeta no está en tu PATH, la agrega. Nada más. Si preferís, podés bajar los archivos a mano desde Releases.
 </details>
 
-## Usarlo
+## Cómo se usa (subcomandos de la consola)
 
 ```
-txt421                 la portada
+txt421                 Abre la app en la portada
 txt421 1542            abre la publicación 1542 (también podés pegar el link)
 txt421 b juegos        una sección
 txt421 buscar algo     busca en todo el foro
@@ -49,7 +49,7 @@ Adentro:
 
 | Tecla | Qué hace |
 |---|---|
-| Flechas | moverte entre las fichas y los mensajes |
+| Flechitas | moverte entre las fichas y los mensajes |
 | Enter | abrir. En un mensaje, responderle (te escribe el `>>N`) |
 | ← → · PgUp PgDn | cambiar de página |
 | Tab · 0–5 | cambiar de sección (0 es la portada) |
@@ -66,13 +66,13 @@ Adentro:
 | `t` | cambiar el tema (oscuro, claro, descanso, monocromo) |
 | `?` | todas las teclas, por si te olvidás |
 
-Cuando estás escribiendo: Tab pasa de un campo a otro, **Ctrl+Enter** (o **Ctrl+S**) publica, Ctrl+P te muestra la vista previa y Esc vuelve (y te guarda el borrador, tranqui). El mouse también funciona, para los que no se bancan vivir sin mouse.
+Cuando estás escribiendo: Tab pasa de un campo a otro, **Ctrl+Enter** (o **Ctrl+S**) publica, Ctrl+P te muestra la vista previa y Esc vuelve (y te guarda el borrador). El mouse también funciona, para los que no se bancan vivir sin mouse (o sea para los que no son gordos programadores como yo).
 
 Las publicaciones que tenés abiertas se actualizan solas cada 20 segundos, igual que en la web.
 
 ## Entrar
 
-Acá hay una vuelta. El sitio solo te deja entrar con Google, y Google solo te deja entrar desde un navegador de verdad. Una terminal no es un navegador de verdad (todavía).
+Como el único login de la web es con Google, y Google solo te deja logear desde un navegador de verdad, y una terminal no es un navegador de verdad (todavía).
 
 Entonces `txt421 entrar` te abre una ventana de Chrome, Edge, Brave o Chromium, con un perfil aparte que es solo de txt421. Entrás como siempre, y cuando ya ves el foro cerrás esa ventana (o volvés a la terminal y apretás Enter). Ahí txt421 abre ese mismo perfil sin ventana y agarra la sesión que dejó el sitio. La sesión dura 30 días, y la próxima vez Google ya se acuerda de tu cuenta, así que es más rápido.
 
@@ -80,11 +80,11 @@ Entonces `txt421 entrar` te abre una ventana de Chrome, Edge, Brave o Chromium, 
 
 Si no tenés ninguno de esos navegadores, o si Google igual se pone densa, está la opción de pegar la cookie a mano: en un navegador donde ya entraste a txt.421.news abrís las herramientas de desarrollo (F12) → Almacenamiento → Cookies → txt.421.news, y copiás el valor de `sid`.
 
-La sesión se guarda solamente en tu compu (en `~/.config/txt421`, `~/Library/Application Support/txt421` o `%AppData%\txt421`, según tu sistema) y solo tu usuario la puede leer. txt421 habla con txt.421.news y con github.com para ver si hay actualizaciones. Con nadie más.
+La sesión se guarda solamente en tu compu (en `~/.config/txt421`, `~/Library/Application Support/txt421` o `%AppData%\txt421`, según tu sistema) y solo tu usuario la puede leer. txt421 se comunica solamente con txt.421.news y con github para ver si hay actualizaciones. No hay nada más.
 
 ## Cómo funciona
 
-No hay API (todavía, o nunca, no sé). txt421 lee el mismo HTML que ve tu navegador y publica usando los mismos formularios que la web. Eso significa que todo pasa por las mismas normas, el mismo filtro de moderación y los mismos límites: 30 segundos entre mensajes y 10 minutos entre publicaciones. No hay trampa acá, perdón.
+No hay API (todavía, o nunca, no sé). txt421 lee el mismo HTML que ve tu navegador y publica usando los mismos formularios que la web. Eso significa que todo pasa por las mismas normas, el mismo filtro de moderación y los mismos límites: 30 segundos entre mensajes y 10 minutos entre publicaciones.
 
 El código del sitio es abierto, y la verdad que eso ayudó muchísimo: [github.com/421news/txt](https://github.com/421news/txt).
 
