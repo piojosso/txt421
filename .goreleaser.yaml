@@ -1,0 +1,47 @@
+# Arma los ejecutables de cada sistema y el release en GitHub (lo corre .github/workflows/release.yml
+# al subir una etiqueta vX.Y.Z).
+version: 2
+project_name: txt421
+
+before:
+  hooks:
+    - go mod tidy
+    - go test ./...
+
+builds:
+  - main: ./cmd/txt421
+    binary: txt421
+    env: [CGO_ENABLED=0]
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]
+    flags: [-trimpath]
+    ldflags: ["-s -w -X main.version={{ .Version }}"]
+
+archives:
+  # Nombres sin la versión: así los instaladores bajan siempre /releases/latest/download/<nombre>.
+  - name_template: "txt421_{{ .Os }}_{{ .Arch }}"
+    formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    files: [README.md, LICENSE]
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  sort: asc
+
+release:
+  footer: |
+    **Instalar**
+
+    macOS / Linux:
+    ```sh
+    curl -fsSL https://raw.githubusercontent.com/piojosso/txt421/main/install.sh | sh
+    ```
+    Windows (PowerShell):
+    ```powershell
+    irm https://raw.githubusercontent.com/piojosso/txt421/main/install.ps1 | iex
+    ```
+    Si ya lo tenés: `txt421 actualizar`.

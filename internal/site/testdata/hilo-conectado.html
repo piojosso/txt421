@@ -1,0 +1,38 @@
+<!doctype html><html lang="es"><head><title>x</title></head><body>
+<header class="cabecera"><div class="cab-fila"><a class="marca" href="/">txt</a><div class="cab-der">
+<a class="icono lupa" href="/buscar">B</a>
+<a class="icono correo hay-novedades" href="/respuestas" title="Respuestas" aria-label="Respuestas (3 nuevas)">C<span class="badge">3</span></a>
+<details class="menu-cab"><summary class="icono">M</summary><div class="menu-desplegable">
+<a href="/respuestas">Respuestas (3)</a><a href="/guardados">Guardados</a><a href="/cuenta">Mi cuenta</a><a href="/normas">Normas</a><a href="/formato">Formato</a>
+<form method="post" action="/salir"><input type="hidden" name="_csrf" value="tok123"><button class="enlace">Salir</button></form>
+</div></details></div></div></header>
+<main>
+<p class="aviso">Tu mensaje quedó en revisión. Mientras tanto solo lo ves vos.</p>
+<form id="guardar" method="post" action="/h/77/guardar"><input type="hidden" name="_csrf" value="tok123"><input type="hidden" name="quitar" value="1"></form><p class="ayuda" id="arriba"><a href="/b/juegos">← Juegos</a> <span class="marca-fijada">Fijada</span> · <button class="enlace" form="guardar">Sacar de guardados</button></p>
+<h1>Hilo de prueba</h1>
+<div id="posts" data-hilo="77" data-ultimo="503">
+<article class="post op" id="p500">
+  <header class="post-meta"><span class="anon">Pseudoanónimo</span><span class="id">ID aaaa1111</span><span class="marca-op">OP</span>
+  <span class="marca-vos" title="Solo lo ves vos">(vos)</span>
+  <time datetime="2026-09-30T02:36:33.815Z">29/9/26, 11:36 p. m.</time><a class="num" href="#p500">No.500</a>
+  <a class="reportar" href="/p/500/borrar" rel="nofollow">Borrar</a></header>
+  <div class="texto">Hola <span class="spoiler" tabindex="0">secreto</span><br><span class="verde">&gt;cita</span></div>
+  <p class="respuestas">Respuestas: <a href="#p501">&gt;&gt;501</a> <a href="#p503">&gt;&gt;503</a> </p>
+  <p class="acciones-post"><a class="citar" href="?cita=500#responder">Responder</a></p>
+</article><article class="post respuesta" id="p501">
+  <header class="post-meta"><span class="anon">Pseudoanónimo</span><span class="id">ID bbbb2222</span>
+  <span class="marca-nuevo" title="Desde tu visita anterior">nuevo</span>
+  <time datetime="2026-09-30T02:40:00.000Z">29/9/26, 11:40 p. m.</time><a class="num" href="#p501">No.501</a><span class="sage">sage</span>
+  <a class="reportar" href="/p/501/reportar" rel="nofollow">Reportar</a></header>
+  <div class="texto"><a class="cita" href="#p500">&gt;&gt;500</a><br>ok</div>
+  <p class="acciones-post"><a class="citar" href="?cita=501#responder">Responder</a></p>
+</article><article class="post respuesta retirado" id="p502"><p>No.502 · Eliminado por moderación.</p></article><article class="post respuesta en-revision" id="p503">
+  <header class="post-meta"><span class="anon">Pseudoanónimo</span><span class="id">ID aaaa1111</span><span class="marca-op">OP</span><span class="marca-vos">(vos)</span>
+  <time datetime="2026-09-30T02:45:00.000Z">29/9/26, 11:45 p. m.</time><a class="num" href="#p503">No.503</a></header>
+  <p class="nota">En revisión: por ahora solo lo ves vos.</p>
+  <div class="texto">en cola</div>
+</article>
+</div>
+<form class="form-post" method="post" autocomplete="off" action="/h/77/responder" id="responder"><h2>Responder</h2>
+<input type="hidden" name="_csrf" value="tok123"><textarea name="cuerpo" rows="6" maxlength="8000" required></textarea></form>
+</main></body></html>
