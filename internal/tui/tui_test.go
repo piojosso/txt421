@@ -231,7 +231,12 @@ func TestHilo(t *testing.T) {
 	if h.sel != 2 {
 		t.Fatal(h.sel)
 	}
-	p.tecla("i") // 14424 cita a 14418
+	p.tecla("i") // 14424 cita a 14418: aparece la copia flotante
+	if c, ok := p.a.capa.(*capaCita); !ok || c.post == nil || c.post.No != 14418 {
+		t.Fatalf("capa %#v", p.a.capa)
+	}
+	p.pantalla("cita-teclado")
+	p.tecla("enter") // y Enter va hasta el mensaje
 	if h.hilo.Posts[h.sel].No != 14418 {
 		t.Fatalf("i fue a %d", h.hilo.Posts[h.sel].No)
 	}
@@ -365,4 +370,50 @@ func TestSeccionVacia(t *testing.T) {
 	correr(a, a.Init())
 	p := &prueba{t, a, 90, 30}
 	contiene(t, p.pantalla("vacia"), "No hay publicaciones todavía.")
+}
+
+// clickEn hace click sobre la primera aparición de texto en la pantalla.
+func (p *prueba) clickEn(texto string) {
+	p.t.Helper()
+	for y, l := range strings.Split(p.pantalla("antes-click"), "\n") {
+		if i := strings.Index(l, texto); i >= 0 {
+			x := ansi.StringWidth(l[:i])
+			_, c := p.a.Update(tea.MouseClickMsg{X: x + 1, Y: y, Button: tea.MouseLeft})
+			correr(p.a, c)
+			return
+		}
+	}
+	p.t.Fatalf("no encontré %q en pantalla", texto)
+}
+
+func TestClickEnCitas(t *testing.T) {
+	p := nuevaPrueba(t, 100, 40, false, "h/1542")
+	h := p.a.actual().(*pantHilo)
+	// "Respuestas: >>14424" del 14418: muestra el 14424 sin moverse.
+	p.clickEn(">>14424")
+	c, ok := p.a.capa.(*capaCita)
+	if !ok || c.post == nil || c.post.No != 14424 {
+		t.Fatalf("capa %#v", p.a.capa)
+	}
+	contiene(t, p.pantalla("cita-click"), ">>14424", "No.14424", "ir al mensaje")
+	if h.elegido().No == 14424 {
+		t.Fatal("no debería haber cambiado la selección")
+	}
+	// Adentro de la copia, el >>14418 lleva a esa otra copia (como seguir la cadena en el sitio).
+	p.clickEn(">>14418 ")
+	if c := p.a.capa.(*capaCita); c.num != 14418 {
+		t.Fatalf("cadena: %d", c.num)
+	}
+	p.tecla("esc")
+	if p.a.capa != nil {
+		t.Fatal("esc no cerró")
+	}
+	// Una cita a otra publicación se trae del sitio.
+	p.clickEn(">>14418")
+	p.a.capa.(*capaCita).post = nil
+	correr(p.a, h.mostrarCita(p.a, 99999, 5))
+	if c := p.a.capa.(*capaCita); c.err == nil {
+		t.Fatal("una cita inexistente debería dar error")
+	}
+	contiene(t, p.pantalla("cita-error"), "ERROR")
 }

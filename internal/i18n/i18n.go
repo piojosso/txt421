@@ -113,6 +113,8 @@ var textos = map[string][2]string{
 	"viene":           {"(viene de la página anterior)", "(continued from previous page)"},
 	"no_acepta":       {"Esta publicación ya no acepta respuestas.", "This thread no longer accepts replies."},
 	"cita_fuera":      {">>%d está en otra publicación: abriéndola…", ">>%d is in another thread: opening it…"},
+	"cita_ir":         {"ir al mensaje", "go to post"},
+	"cerrar":          {"cerrar", "close"},
 	"cita_no_hay":     {"Este mensaje no cita a nadie.", "This message doesn't quote anyone."},
 
 	// Formularios

@@ -56,7 +56,7 @@ Adentro:
 | Esc | volver |
 | `n` | publicar |
 | `r` | responder |
-| `i` | ir al mensaje citado (el `>>N`). Esc te trae de vuelta |
+| `i` · click en un `>>N` | te muestra el mensaje citado (o las respuestas) flotando, como en la web. Enter te lleva hasta ahí y Esc te trae de vuelta |
 | `g` | guardar la publicación |
 | `x` | reportar (o borrar, si es tuyo) |
 | `s` | destapar el spoiler |

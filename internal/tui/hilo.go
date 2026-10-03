@@ -359,6 +359,8 @@ func (p *pantHilo) Dibujar(a *App, z *Zonas, w, alto int) []Linea {
 		}
 		y := len(ls)
 		idx := s.post
+		// Los >>N (en el texto y en "Respuestas:") muestran el mensaje citado, como en el sitio.
+		zonasRefs(s.lineas, y, z, func(n, yLink int) tea.Cmd { return p.mostrarCita(a, n, yLink) })
 		z.agregar(0, y, w, y+len(s.lineas), func() tea.Cmd {
 			if p.sel == idx {
 				return p.responder(a, true)
@@ -543,16 +545,8 @@ func (p *pantHilo) irACita(a *App) tea.Cmd {
 	}
 	n := nums[p.citaIdx%len(nums)]
 	p.citaIdx++
-	for i, post := range p.hilo.Posts {
-		if post.No == n {
-			p.historial = append(p.historial, p.sel)
-			p.sel, p.destapar = i, false
-			p.citaIdx = 0
-			return nil
-		}
-	}
-	a.avisar(T("cita_fuera", n))
-	return a.Ir(nuevaHiloPorPost(n))
+	// Igual que tocar el link: la copia flotante (Enter va hasta el mensaje, i pasa a la próxima).
+	return p.mostrarCita(a, n, -1)
 }
 
 func (p *pantHilo) responder(a *App, citar bool) tea.Cmd {
